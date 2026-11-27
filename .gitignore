@@ -37,3 +37,15 @@ dist-ssr
 
 # Local link to a Base44 app, written by `base44 link`
 base44/.app.jsonc
+
+# Local runtime and platform credentials
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+.envrc
+.vercel
+.next
+.turbo
+coverage
+*.tsbuildinfo
+

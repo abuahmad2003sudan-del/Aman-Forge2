@@ -5,11 +5,18 @@
     "ghcr.io/devcontainers/features/deno:1": {}
   },
   "postCreateCommand": "npm install && npm install --global base44@latest",
-  "forwardPorts": [5173],
+  "forwardPorts": [
+    5173,
+    8787
+  ],
   "portsAttributes": {
     "5173": {
       "label": "AMAN FORGE preview",
       "onAutoForward": "openBrowser"
+    },
+    "8787": {
+      "label": "Local worker runtime",
+      "onAutoForward": "silent"
     }
   },
   "customizations": {
@@ -17,7 +24,14 @@
       "extensions": [
         "dbaeumer.vscode-eslint",
         "esbenp.prettier-vscode"
-      ]
+      ],
+      "settings": {
+        "editor.formatOnSave": true,
+        "files.trimTrailingWhitespace": true,
+        "editor.codeActionsOnSave": {
+          "source.fixAll.eslint": "explicit"
+        }
+      }
     }
   }
 }

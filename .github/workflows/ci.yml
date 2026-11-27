@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
@@ -28,6 +28,11 @@ jobs:
         with:
           node-version: 22
 
+      - name: Set up Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
@@ -40,8 +45,26 @@ jobs:
       - name: Preview tests
         run: npm run test:preview
 
+      - name: Shared backend tests
+        run: npm run test:shared
+
+      - name: Type-check shared backend modules
+        run: npm run typecheck:shared
+
+      - name: Type-check TypeScript utilities
+        run: npm run typecheck:utils
+
       # Existing JS/JSX checkJs diagnostics are recorded as advisory while the
       # baseline is cleaned up; build, lint, and focused tests remain blocking.
       - name: Type check (baseline advisory)
         run: npm run typecheck
         continue-on-error: true
+
+      - name: Upload production build artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aman-forge-dist-${{ github.sha }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7

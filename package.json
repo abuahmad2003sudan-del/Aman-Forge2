@@ -10,7 +10,11 @@
     "test:preview": "node --test src/lib/preview.test.js",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p ./jsconfig.json",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:shared": "deno test base44/shared",
+    "test": "npm run test:preview && npm run test:shared",
+    "typecheck:utils": "tsc --noEmit --strict --target ES2022 --module ESNext --moduleResolution bundler src/utils/index.ts",
+    "typecheck:shared": "deno check base44/shared/agentPipeline.ts base44/shared/projectFiles.ts"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.63",
