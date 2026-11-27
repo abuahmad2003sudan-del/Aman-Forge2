@@ -1,0 +1,78 @@
+export const PROVIDERS = [
+  {
+    id: 'openai',
+    name: 'OpenAI',
+    hint: 'GPT-4.1 · o4-mini',
+    models: ['gpt-4.1', 'gpt-4.1-mini', 'o4-mini'],
+    keyUrl: 'https://platform.openai.com/api-keys',
+    secret: 'OPENAI_API_KEY',
+    accent: '#10a37f',
+  },
+  {
+    id: 'anthropic',
+    name: 'Anthropic',
+    hint: 'Claude Sonnet · Opus',
+    models: ['claude-sonnet-4-5', 'claude-opus-4-1', 'claude-3-5-haiku-latest'],
+    keyUrl: 'https://console.anthropic.com/settings/keys',
+    secret: 'ANTHROPIC_API_KEY',
+    accent: '#d97757',
+  },
+  {
+    id: 'google',
+    name: 'Google Gemini',
+    hint: 'Gemini 2.5 Flash · Pro',
+    models: ['gemini-2.5-flash', 'gemini-2.5-pro'],
+    keyUrl: 'https://aistudio.google.com/app/apikey',
+    secret: 'GEMINI_API_KEY',
+    accent: '#4285f4',
+  },
+  {
+    id: 'openrouter',
+    name: 'OpenRouter',
+    hint: 'كل الموديلات بمفتاح واحد',
+    models: ['anthropic/claude-sonnet-4.5', 'openai/gpt-4.1', 'google/gemini-2.5-flash'],
+    keyUrl: 'https://openrouter.ai/keys',
+    secret: 'OPENROUTER_API_KEY',
+    accent: '#8b5cf6',
+  },
+  {
+    id: 'deepseek',
+    name: 'DeepSeek',
+    hint: 'DeepSeek Chat · Reasoner',
+    models: ['deepseek-chat', 'deepseek-reasoner'],
+    keyUrl: 'https://platform.deepseek.com/api_keys',
+    secret: 'DEEPSEEK_API_KEY',
+    accent: '#4d6bfe',
+  },
+  {
+    id: 'groq',
+    name: 'Groq',
+    hint: 'Llama · سرعة فائقة',
+    models: ['llama-3.3-70b-versatile'],
+    keyUrl: 'https://console.groq.com/keys',
+    secret: 'GROQ_API_KEY',
+    accent: '#f55036',
+  },
+  {
+    id: 'xai',
+    name: 'xAI',
+    hint: 'Grok',
+    models: ['grok-4', 'grok-3'],
+    keyUrl: 'https://console.x.ai',
+    secret: 'XAI_API_KEY',
+    accent: '#c9c9c9',
+  },
+  {
+    id: 'mistral',
+    name: 'Mistral',
+    hint: 'Mistral Large',
+    models: ['mistral-large-latest'],
+    keyUrl: 'https://console.mistral.ai/api-keys',
+    secret: 'MISTRAL_API_KEY',
+    accent: '#ff7000',
+  },
+];
+
+export function providerById(id) {
+  return PROVIDERS.find((p) => p.id === id) || PROVIDERS[0];
+}
