@@ -51,6 +51,9 @@ jobs:
       - name: Type-check shared backend modules
         run: npm run typecheck:shared
 
+      - name: Type-check backend functions
+        run: npm run typecheck:functions
+
       - name: Type-check TypeScript utilities
         run: npm run typecheck:utils
 
