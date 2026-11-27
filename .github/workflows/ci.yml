@@ -28,6 +28,11 @@ jobs:
         with:
           node-version: 22
 
+      - name: Set up Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
@@ -39,6 +44,9 @@ jobs:
 
       - name: Preview tests
         run: npm run test:preview
+
+      - name: Shared backend tests
+        run: npm run test:shared
 
       # Existing JS/JSX checkJs diagnostics are recorded as advisory while the
       # baseline is cleaned up; build, lint, and focused tests remain blocking.
