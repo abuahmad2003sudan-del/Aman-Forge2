@@ -60,7 +60,7 @@ Deno.test("project file sanitizer rejects environment and reserved paths", () =>
     "config/.env.production",
     "node_modules/react/index.js",
     "src/__proto__/polluted.js",
-    "src/constructor.js",
+    "src/constructor/file.js",
     "src/.git/config",
   ]) {
     assertThrows(
