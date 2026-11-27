@@ -45,6 +45,9 @@ jobs:
       - name: Preview tests
         run: npm run test:preview
 
+      - name: Usage summary tests
+        run: npm run test:usage
+
       - name: Shared backend tests
         run: npm run test:shared
 

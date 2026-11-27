@@ -4,7 +4,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { ar } from 'date-fns/locale';
 import {
   ArrowLeft, ArrowUpLeft, Blocks, Check, Code2,
-  Eye, FolderKanban, Layers3, Loader2, Plus, Sparkles, WandSparkles,
+  Activity, Eye, FolderKanban, Layers3, Loader2, Plus, Sparkles, WandSparkles,
 } from 'lucide-react';
 import AppShell from '@/components/AppShell';
 import ProjectCard from '@/components/ProjectCard';
@@ -14,6 +14,7 @@ import { base44 } from '@/api/base44Client';
 import { sessionKey } from '@/lib/session';
 import { getActive } from '@/lib/aiKeys';
 import { providerById } from '@/lib/providers';
+import { summarizeUsageLogs } from '@/lib/usageSummary';
 
 const SUGGESTIONS = [
   'منصة تجارة إلكترونية فاخرة مع لوحة تحكم متكاملة',
@@ -64,12 +65,30 @@ export default function Dashboard() {
   const [error, setError] = useState('');
   const [loadError, setLoadError] = useState('');
   const [reloadToken, setReloadToken] = useState(0);
+  const [usageLogs, setUsageLogs] = useState([]);
+  const [usageLoading, setUsageLoading] = useState(true);
+  const [usageError, setUsageError] = useState('');
   const composerRef = useRef(null);
 
   useEffect(() => {
     let alive = true;
     setLoading(true);
     setLoadError('');
+    setUsageLoading(true);
+    setUsageError('');
+    // Usage rows are already owner-scoped by BuildLog RLS. This dashboard reads
+    // only the latest 100 provider-reported usage records; it is not a billing
+    // ledger or a lifetime total.
+    base44.entities.BuildLog.filter(
+      { usage_source: 'provider' },
+      { sort: '-created_date', limit: 100 },
+    )
+      .then((page) => { if (alive) setUsageLogs(page.items || []); })
+      .catch(() => {
+        if (alive) setUsageError('تعذّر تحميل ملخص الاستخدام الآن.');
+      })
+      .finally(() => { if (alive) setUsageLoading(false); });
+
     // Project RLS already scopes this query to the signed-in owner. Do not
     // filter by a browser-local session key: that hid projects on other devices.
     base44.entities.Project.filter({}, { sort: '-updated_date', limit: 24 })
@@ -108,6 +127,8 @@ export default function Dashboard() {
 
   const active = getActive();
   const provider = providerById(active.provider);
+  const usageSummary = summarizeUsageLogs(usageLogs);
+  const formatUsage = (value) => value === null ? '—' : value.toLocaleString('en-US');
 
   return (
     <AppShell wide>
@@ -204,6 +225,52 @@ export default function Dashboard() {
                 <div className="forge-composer-footnote"><Check size={12} /> مشروعك يُحفظ داخل مساحة العمل مع سجل نسخه وملفاته</div>
               </div>
             </div>
+          </div>
+        </section>
+
+        <section className="mx-auto max-w-[1600px] px-5 pb-9 sm:px-8">
+          <div className="grid gap-5 rounded-2xl border border-white/[.09] bg-white/[.025] px-5 py-5 lg:grid-cols-[.85fr_1.15fr] lg:items-center lg:px-7">
+            <div>
+              <p className="forge-section-kicker">AI USAGE <span>— RECENT RECORDS</span></p>
+              <h2 className="mt-2 text-[19px] font-medium text-[#edf2e8]">استهلاك المزوّدين</h2>
+              <p className="mt-2 max-w-[440px] text-[11px] leading-6 text-[#a8b7a5]/65">
+                أحدث 100 سجل استهلاك أبلغ بها المزوّد. هذه أعداد رموز فعلية عند توفرها، وليست تقديراً للتكلفة أو فاتورة بالدولار.
+              </p>
+              {usageError && <p role="status" className="mt-2 text-[10px] text-amber-200/80">{usageError}</p>}
+            </div>
+            {usageLoading ? (
+              <div className="flex min-h-24 items-center justify-center gap-2 text-[11px] text-[#9eab9b]/70">
+                <Loader2 className="h-4 w-4 animate-spin" /> جارٍ تحميل سجلات الاستخدام…
+              </div>
+            ) : usageError ? (
+              <div className="flex min-h-24 items-center justify-center text-[11px] text-[#9eab9b]/60">
+                بيانات الاستخدام غير متاحة حالياً.
+              </div>
+            ) : usageSummary.calls === 0 ? (
+              <div className="flex min-h-24 items-center justify-center gap-2 text-[11px] text-[#9eab9b]/60">
+                <Activity size={16} /> ستظهر القياسات بعد أول استدعاء يعيد بيانات الرموز.
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <div className="rounded-xl border border-white/[.07] bg-black/20 px-3 py-3">
+                  <span className="text-[9px] text-[#9eab9b]/60">استدعاءات موثّقة</span>
+                  <strong className="mt-2 block text-[21px] font-medium tabular-nums text-[#e7eee2]">{formatUsage(usageSummary.calls)}</strong>
+                </div>
+                <div className="rounded-xl border border-white/[.07] bg-black/20 px-3 py-3">
+                  <span className="text-[9px] text-[#9eab9b]/60">رموز الإدخال</span>
+                  <strong className="mt-2 block text-[21px] font-medium tabular-nums text-[#e7eee2]">{formatUsage(usageSummary.inputTokens)}</strong>
+                </div>
+                <div className="rounded-xl border border-white/[.07] bg-black/20 px-3 py-3">
+                  <span className="text-[9px] text-[#9eab9b]/60">رموز الإخراج</span>
+                  <strong className="mt-2 block text-[21px] font-medium tabular-nums text-[#e7eee2]">{formatUsage(usageSummary.outputTokens)}</strong>
+                </div>
+                <div className="rounded-xl border border-emerald-300/15 bg-emerald-300/[.045] px-3 py-3">
+                  <span className="text-[9px] text-emerald-100/55">الإجمالي المبلّغ</span>
+                  <strong className="mt-2 block text-[21px] font-medium tabular-nums text-emerald-100">{formatUsage(usageSummary.totalTokens)}</strong>
+                  <span className="mt-1 block text-[8px] text-emerald-100/40">{formatUsage(usageSummary.totalReportedCalls)} سجل بإجمالي متاح</span>
+                </div>
+              </div>
+            )}
           </div>
         </section>
 
