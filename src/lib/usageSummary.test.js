@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { summarizeUsageLogs } from "./usageSummary.js";
+import { groupUsageByProvider, summarizeUsageLogs } from "./usageSummary.js";
 
 test("summarizes only provider-reported usage records", () => {
   const result = summarizeUsageLogs([
@@ -57,7 +57,6 @@ test("returns an empty summary for invalid or missing collections", () => {
 
 
 test("groups usage by provider and model without merging distinct models", async () => {
-  const { groupUsageByProvider } = await import("./usageSummary.js");
   const groups = groupUsageByProvider([
     { usage_source: "provider", provider: "openai", model: "gpt-4.1", input_tokens: 100, output_tokens: 20, total_tokens: 120 },
     { usage_source: "provider", provider: "openai", model: "gpt-4.1", input_tokens: 60, output_tokens: 10, total_tokens: 70 },
@@ -81,7 +80,6 @@ test("groups usage by provider and model without merging distinct models", async
 });
 
 test("usage grouping bounds labels and result count and preserves unknown counts", async () => {
-  const { groupUsageByProvider } = await import("./usageSummary.js");
   const longName = "x".repeat(200);
   const rows = [
     { usage_source: "provider", provider: longName, model: "model-a", input_tokens: null, output_tokens: null, total_tokens: null },
