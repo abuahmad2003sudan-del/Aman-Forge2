@@ -5,7 +5,7 @@
 // resolves its credential from a platform-managed secret (environment variable)
 // at request time, inside the backend function.
 
-import { normalizeProviderUsage } from "./aiUsage.ts";
+import { normalizeProviderUsage, type NormalizedModelUsage } from "./aiUsage.ts";
 
 export const PROVIDERS = {
   openai: {
@@ -89,7 +89,9 @@ export function resolveApiKey(providerId: string): string {
   }
 }
 
-function modelResult(provider: string, data: unknown, text: string, response: Response) {
+type ModelCallResult = { text: string } & NormalizedModelUsage;
+
+function modelResult(provider: string, data: unknown, text: string, response: Response): ModelCallResult {
   const requestId =
     response.headers.get("x-request-id") ||
     response.headers.get("request-id") ||
@@ -112,7 +114,7 @@ async function failure(res: Response): Promise<Error> {
   return new Error(`${res.status} ${detail || res.statusText}`.trim());
 }
 
-export async function callModel({ provider, model, apiKey, system, messages, maxTokens = 8192 }: CallModelOptions) {
+export async function callModel({ provider, model, apiKey, system, messages, maxTokens = 8192 }: CallModelOptions): Promise<ModelCallResult> {
   const p = PROVIDERS[provider as ProviderId];
   if (!p) throw new Error('مزوّد غير مدعوم');
   if (!apiKey) throw new Error('المزوّد غير مربوط');
