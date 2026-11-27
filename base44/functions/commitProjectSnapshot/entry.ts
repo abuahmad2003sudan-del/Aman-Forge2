@@ -1,16 +1,25 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.54";
 import { sanitizeProjectFiles } from "../../shared/projectFiles.ts";
 
-function responseError(message: string, status: number) {
+function responseError(message: string, status: number): Response {
   return Response.json({ error: message }, { status });
 }
 
-export default async function (req: Request) {
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function errorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
+}
+
+export default async function (req: Request): Promise<Response> {
   const startedAt = Date.now();
 
   try {
-    const body = await req.json().catch(() => ({}));
-    const { projectId, action } = body || {};
+    const parsedBody: unknown = await req.json().catch(() => ({}));
+    const body = isRecord(parsedBody) ? parsedBody : {};
+    const { projectId, action } = body;
 
     if (typeof projectId !== "string" || !projectId.trim()) {
       return responseError("معرّف المشروع غير صالح.", 400);
@@ -54,7 +63,7 @@ export default async function (req: Request) {
       try {
         files = sanitizeProjectFiles(source.files);
       } catch (error) {
-        return responseError(error?.message || "ملفات النسخة غير صالحة.", 400);
+        return responseError(errorMessage(error, "ملفات النسخة غير صالحة."), 400);
       }
 
       restoredFrom = Number(source.number || 0);
@@ -66,7 +75,7 @@ export default async function (req: Request) {
       try {
         files = sanitizeProjectFiles(body.files);
       } catch (error) {
-        return responseError(error?.message || "ملفات المشروع غير صالحة.", 400);
+        return responseError(errorMessage(error, "ملفات المشروع غير صالحة."), 400);
       }
 
       if (!files.length) return responseError("لا توجد ملفات لحفظها.", 400);
@@ -148,7 +157,7 @@ export default async function (req: Request) {
     });
   } catch (error) {
     return Response.json(
-      { error: error?.message || "تعذّر حفظ نسخة المشروع." },
+      { error: errorMessage(error, "تعذّر حفظ نسخة المشروع.") },
       { status: 500 },
     );
   }
