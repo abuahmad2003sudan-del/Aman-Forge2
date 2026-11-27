@@ -48,6 +48,12 @@ jobs:
       - name: Shared backend tests
         run: npm run test:shared
 
+      - name: Type-check shared backend modules
+        run: npm run typecheck:shared
+
+      - name: Type-check TypeScript utilities
+        run: npm run typecheck:utils
+
       # Existing JS/JSX checkJs diagnostics are recorded as advisory while the
       # baseline is cleaned up; build, lint, and focused tests remain blocking.
       - name: Type check (baseline advisory)
