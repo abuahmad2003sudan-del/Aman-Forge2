@@ -13,7 +13,7 @@ AMAN FORGE is an AI-assisted application workspace for describing, building, ins
 - Project file editor, preview, versions and build logs
 - Fast and deep agent modes with bounded planning and project inspection
 - Server-side AI provider configuration; API credentials are resolved from platform secrets
-- Build logs show provider-reported input/output/total token usage and provider request references when available; unknown usage stays unknown and no price is fabricated
+- Each successful model response is logged immediately with provider-reported input/output/total token usage and a request reference when available—even if later JSON parsing or project validation fails. Unknown usage stays unknown; no monetary price is fabricated.
 - File path, extension, size and project-shape validation
 - Isolated HTML preview with a restrictive Content Security Policy and network access denied by default
 - Base44 entities and server functions for authentication, projects, snapshots and provider configuration
