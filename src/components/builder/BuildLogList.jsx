@@ -10,6 +10,7 @@ function duration(ms) {
 }
 
 function tokenCount(value) {
+  if (value === null || value === undefined || value === '') return '';
   const n = Number(value);
   return Number.isSafeInteger(n) && n >= 0 ? n.toLocaleString('en-US') : '';
 }
