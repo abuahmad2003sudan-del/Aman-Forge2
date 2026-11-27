@@ -1,5 +1,63 @@
 const clean = (path) => String(path || '').replace(/^\.?\//, '');
 
+function isExternalReference(reference) {
+  return /^(?:[a-z][a-z0-9+.-]*:|\/\/|#)/i.test(String(reference || '').trim());
+}
+
+// Resolve a generated-project reference against the file that contains it.
+// References are never allowed to escape the generated project's root.
+function resolveLocalPath(sourcePath, reference) {
+  const raw = String(reference || '').trim();
+  if (!raw || isExternalReference(raw)) return null;
+
+  const pathOnly = raw.split(/[?#]/, 1)[0];
+  if (!pathOnly) return null;
+
+  const segments = pathOnly.startsWith('/')
+    ? []
+    : clean(sourcePath).split('/').slice(0, -1);
+
+  for (const segment of pathOnly.replace(/^\/+/, '').split('/')) {
+    if (!segment || segment === '.') continue;
+    if (segment === '..') {
+      if (!segments.length) return null;
+      segments.pop();
+      continue;
+    }
+    segments.push(segment);
+  }
+
+  return segments.length ? segments.join('/') : null;
+}
+
+function svgDataUrl(path, content) {
+  if (!/\.svg$/i.test(path)) return null;
+  if (typeof content !== 'string' || !/<svg(?:\s|>)/i.test(content)) return null;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(content)}`;
+}
+
+function resolveSvgAsset(byPath, sourcePath, reference) {
+  const path = resolveLocalPath(sourcePath, reference);
+  if (!path || !Object.prototype.hasOwnProperty.call(byPath, path)) return null;
+  return svgDataUrl(path, byPath[path]);
+}
+
+function inlineCssAssets(css, stylesheetPath, byPath) {
+  return css.replace(/url\(\s*(['"]?)(.*?)\1\s*\)/gi, (match, _quote, reference) => {
+    const dataUrl = resolveSvgAsset(byPath, stylesheetPath, reference);
+    return dataUrl ? `url("${dataUrl}")` : match;
+  });
+}
+
+function inlineHtmlSvgAssets(html, entryPath, byPath) {
+  return html.replace(/<(?:img|source|video|audio|track)\b[^>]*>/gi, (tag) => {
+    return tag.replace(/\b(src|poster)\s*=\s*(["'])(.*?)\2/gi, (attribute, name, quote, reference) => {
+      const dataUrl = resolveSvgAsset(byPath, entryPath, reference);
+      return dataUrl ? `${name}=${quote}${dataUrl}${quote}` : attribute;
+    });
+  });
+}
+
 // The generated app runs in an opaque-origin iframe. External network access is
 // denied by default; the user may explicitly opt into HTTPS resources per preview.
 // No host storage, cookies, DOM, popups, form navigation or device permissions.
@@ -56,32 +114,40 @@ function injectHead(html, allowNetwork) {
 }
 
 export function buildPreviewDoc(files, options = {}) {
-  const list = (Array.isArray(files) ? files : []).filter((f) => f && f.path && typeof f.content === 'string');
+  const list = (Array.isArray(files) ? files : []).filter((file) =>
+    file && file.path && typeof file.content === 'string'
+  );
   if (!list.length) return '';
 
   // A null-prototype map prevents special file names from mutating object prototypes.
   const byPath = Object.create(null);
-  list.forEach((f) => {
-    byPath[clean(f.path)] = f.content;
+  list.forEach((file) => {
+    byPath[clean(file.path)] = file.content;
   });
 
-  let html = byPath['index.html'];
+  let entryPath = 'index.html';
+  let html = byPath[entryPath];
   if (html === undefined) {
-    const candidate = list.find((f) => /\.html?$/i.test(f.path));
+    const candidate = list.find((file) => /\.html?$/i.test(file.path));
     if (!candidate) return '';
+    entryPath = clean(candidate.path);
     html = candidate.content;
   }
 
-  html = html.replace(/<link[^>]*href=["']([^"']+\.css)["'][^>]*>/gi, (match, href) => {
-    const css = byPath[clean(href)];
-    return css !== undefined ? `<style>\n${css}\n</style>` : match;
+  html = html.replace(/<link\b[^>]*href=["']([^"']+\.css(?:[?#][^"']*)?)["'][^>]*>/gi, (match, href) => {
+    const stylesheetPath = resolveLocalPath(entryPath, href);
+    const css = stylesheetPath ? byPath[stylesheetPath] : undefined;
+    if (css === undefined) return match;
+    return `<style>\n${inlineCssAssets(css, stylesheetPath, byPath)}\n</style>`;
   });
 
   html = html.replace(/<script([^>]*?)\ssrc=["']([^"']+)["']([^>]*)><\/script>/gi, (match, _pre, src) => {
-    const js = byPath[clean(src)];
+    const scriptPath = resolveLocalPath(entryPath, src);
+    const js = scriptPath ? byPath[scriptPath] : undefined;
     return js !== undefined ? `<script>\n${js}\n</script>` : match;
   });
 
+  html = inlineHtmlSvgAssets(html, entryPath, byPath);
   return injectHead(html, options?.allowNetwork === true);
 }
 
@@ -103,9 +169,9 @@ export function downloadHtml(files, name = 'app.html', options = {}) {
   if (!doc) return;
   const blob = new Blob([doc], { type: 'text/html;charset=utf-8' });
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = name;
-  a.click();
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = name;
+  anchor.click();
   setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
