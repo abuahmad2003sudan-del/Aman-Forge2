@@ -5,6 +5,8 @@
 // resolves its credential from a platform-managed secret (environment variable)
 // at request time, inside the backend function.
 
+import { normalizeProviderUsage } from "./aiUsage.ts";
+
 export const PROVIDERS = {
   openai: {
     id: 'openai',
@@ -87,6 +89,18 @@ export function resolveApiKey(providerId: string): string {
   }
 }
 
+function modelResult(provider: string, data: unknown, text: string, response: Response) {
+  const requestId =
+    response.headers.get("x-request-id") ||
+    response.headers.get("request-id") ||
+    response.headers.get("x-goog-request-id");
+
+  return {
+    text,
+    ...normalizeProviderUsage(provider, data, requestId),
+  };
+}
+
 async function failure(res: Response): Promise<Error> {
   let detail = '';
   try {
@@ -98,7 +112,7 @@ async function failure(res: Response): Promise<Error> {
   return new Error(`${res.status} ${detail || res.statusText}`.trim());
 }
 
-export async function callModel({ provider, model, apiKey, system, messages, maxTokens = 8192 }: CallModelOptions): Promise<string> {
+export async function callModel({ provider, model, apiKey, system, messages, maxTokens = 8192 }: CallModelOptions) {
   const p = PROVIDERS[provider as ProviderId];
   if (!p) throw new Error('مزوّد غير مدعوم');
   if (!apiKey) throw new Error('المزوّد غير مربوط');
@@ -120,7 +134,7 @@ export async function callModel({ provider, model, apiKey, system, messages, max
     });
     if (!res.ok) throw await failure(res);
     const data = await res.json();
-    return data?.choices?.[0]?.message?.content ?? '';
+    return modelResult(provider, data, data?.choices?.[0]?.message?.content ?? '', res);
   }
 
   if (p.style === 'anthropic') {
@@ -142,7 +156,7 @@ export async function callModel({ provider, model, apiKey, system, messages, max
     if (!res.ok) throw await failure(res);
     const data = await res.json();
     const content: Array<{ type?: string; text?: string }> = Array.isArray(data?.content) ? data.content : [];
-    return content.filter((c) => c.type === 'text').map((c) => c.text || '').join('\n');
+    return modelResult(provider, data, content.filter((c) => c.type === 'text').map((c) => c.text || '').join('\n'), res);
   }
 
   const res = await fetch(`${p.baseUrl}/models/${encodeURIComponent(model)}:generateContent`, {
@@ -166,7 +180,7 @@ export async function callModel({ provider, model, apiKey, system, messages, max
   const parts: Array<{ text?: string }> = Array.isArray(data?.candidates?.[0]?.content?.parts)
     ? data.candidates[0].content.parts
     : [];
-  return parts.map((part) => part.text || '').join('');
+  return modelResult(provider, data, parts.map((part) => part.text || '').join(''), res);
 }
 
 export function parseJsonReply(text: string): any {
