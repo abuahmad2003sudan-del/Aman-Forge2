@@ -14,7 +14,8 @@
     "test:shared": "deno test base44/shared",
     "test": "npm run test:preview && npm run test:shared",
     "typecheck:utils": "tsc --noEmit --strict --target ES2022 --module ESNext --moduleResolution bundler src/utils/index.ts",
-    "typecheck:shared": "deno check base44/shared/agentPipeline.ts base44/shared/projectFiles.ts base44/shared/aiUsage.ts base44/shared/aiProviders.ts"
+    "typecheck:shared": "deno check base44/shared/agentPipeline.ts base44/shared/projectFiles.ts base44/shared/aiUsage.ts base44/shared/aiProviders.ts",
+    "typecheck:functions": "deno check base44/functions/aiBuild/entry.ts base44/functions/commitProjectSnapshot/entry.ts"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.63",
