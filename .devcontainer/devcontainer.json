@@ -1,0 +1,23 @@
+{
+  "name": "AMAN FORGE",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/deno:1": {}
+  },
+  "postCreateCommand": "npm install && npm install --global base44@latest",
+  "forwardPorts": [5173],
+  "portsAttributes": {
+    "5173": {
+      "label": "AMAN FORGE preview",
+      "onAutoForward": "openBrowser"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode"
+      ]
+    }
+  }
+}
