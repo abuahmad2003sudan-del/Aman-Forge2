@@ -9,6 +9,25 @@ function duration(ms) {
   return n < 1000 ? `${Math.round(n)} م.ث` : `${(n / 1000).toFixed(1)} ث`;
 }
 
+function tokenCount(value) {
+  if (value === null || value === undefined || value === '') return '';
+  const n = Number(value);
+  return Number.isSafeInteger(n) && n >= 0 ? n.toLocaleString('en-US') : '';
+}
+
+function usageSummary(log) {
+  if (log.usage_source !== 'provider') return '';
+  const input = tokenCount(log.input_tokens);
+  const output = tokenCount(log.output_tokens);
+  const total = tokenCount(log.total_tokens);
+  if (!input && !output && !total) return '';
+  return [
+    input ? `إدخال ${input}` : '',
+    output ? `إخراج ${output}` : '',
+    total ? `الإجمالي ${total} token` : '',
+  ].filter(Boolean).join(' · ');
+}
+
 export default function BuildLogList({ logs }) {
   if (!logs.length) {
     return (
@@ -28,6 +47,7 @@ export default function BuildLogList({ logs }) {
         {logs.map((log) => {
           const ok = log.status === 'success';
           const Icon = ok ? CheckCircle2 : XCircle;
+          const usage = usageSummary(log);
           return (
             <div key={log.id} className="flex items-start gap-2.5 px-4 py-2.5">
               <Icon
@@ -61,6 +81,16 @@ export default function BuildLogList({ logs }) {
                   {[log.provider, log.model].filter(Boolean).join(' · ')}
                   {log.prompt ? ` · ${log.prompt}` : ''}
                 </p>
+                {usage && (
+                  <p className="mt-1 text-[10px] text-emerald-300/80" dir="auto">
+                    {usage}
+                  </p>
+                )}
+                {log.request_id && (
+                  <p className="mt-0.5 truncate text-[9px] text-muted-foreground/45" dir="ltr">
+                    Ref: {String(log.request_id).slice(0, 64)}
+                  </p>
+                )}
               </div>
             </div>
           );

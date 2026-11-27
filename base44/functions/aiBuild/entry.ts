@@ -176,7 +176,7 @@ export default async function (req) {
     // single-call cost profile.
     let plan: ReturnType<typeof normalizeAgentPlan> | null = null;
     if (agentMode === 'deep') {
-      const planText = await callModel({
+      const planResponse = await callModel({
         provider,
         model,
         apiKey,
@@ -191,11 +191,16 @@ export default async function (req) {
           ].filter(Boolean).join('\n\n'),
         }],
       });
-      plan = normalizeAgentPlan(parseJsonReply(planText));
+      plan = normalizeAgentPlan(parseJsonReply(planResponse.text));
       await writeLog({
         status: 'success',
         stage: 'خطة التنفيذ',
         message: formatAgentPlan(plan),
+        input_tokens: planResponse.inputTokens,
+        output_tokens: planResponse.outputTokens,
+        total_tokens: planResponse.totalTokens,
+        usage_source: planResponse.usageSource,
+        request_id: planResponse.requestId,
       });
     }
 
@@ -219,7 +224,7 @@ export default async function (req) {
     }
     parts.push("REQUEST:\n" + prompt.trim());
 
-    const text = await callModel({
+    const modelResponse = await callModel({
       provider,
       model,
       apiKey,
@@ -227,7 +232,7 @@ export default async function (req) {
       messages: [{ role: "user", content: parts.join("\n\n") }],
     });
 
-    const parsed = parseJsonReply(text);
+    const parsed = parseJsonReply(modelResponse.text);
     const incoming = sanitizeProjectFiles(parsed.files, { maxFiles: 12 });
     if (!incoming.length) {
       throw new Error(
@@ -313,6 +318,11 @@ export default async function (req) {
       stage: "بناء",
       message: summary,
       version,
+      input_tokens: modelResponse.inputTokens,
+      output_tokens: modelResponse.outputTokens,
+      total_tokens: modelResponse.totalTokens,
+      usage_source: modelResponse.usageSource,
+      request_id: modelResponse.requestId,
     });
 
     return Response.json({

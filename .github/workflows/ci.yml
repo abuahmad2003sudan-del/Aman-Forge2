@@ -51,6 +51,12 @@ jobs:
       - name: Type-check shared backend modules
         run: npm run typecheck:shared
 
+      # Base44 function files predate strict Deno checking; keep diagnostics visible
+      # without blocking unrelated verified build and test gates during cleanup.
+      - name: Type-check backend functions (legacy diagnostics advisory)
+        run: npm run typecheck:functions
+        continue-on-error: true
+
       - name: Type-check TypeScript utilities
         run: npm run typecheck:utils
 
