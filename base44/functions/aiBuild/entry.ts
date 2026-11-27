@@ -191,16 +191,25 @@ export default async function (req) {
           ].filter(Boolean).join('\n\n'),
         }],
       });
-      plan = normalizeAgentPlan(parseJsonReply(planResponse.text));
+      // Record provider usage immediately after the response, before parsing.
+      // A malformed plan must not erase the cost of a successful model call.
       await writeLog({
         status: 'success',
-        stage: 'خطة التنفيذ',
-        message: formatAgentPlan(plan),
+        stage: 'استهلاك النموذج · التخطيط',
+        message: planResponse.usageSource === 'provider'
+          ? 'أعاد المزوّد بيانات الرموز لهذا الاستدعاء.'
+          : 'لم يوفّر المزوّد بيانات الرموز لهذا الاستدعاء.',
         input_tokens: planResponse.inputTokens,
         output_tokens: planResponse.outputTokens,
         total_tokens: planResponse.totalTokens,
         usage_source: planResponse.usageSource,
         request_id: planResponse.requestId,
+      });
+      plan = normalizeAgentPlan(parseJsonReply(planResponse.text));
+      await writeLog({
+        status: 'success',
+        stage: 'خطة التنفيذ',
+        message: formatAgentPlan(plan),
       });
     }
 
@@ -230,6 +239,20 @@ export default async function (req) {
       apiKey,
       system: SYSTEM,
       messages: [{ role: "user", content: parts.join("\n\n") }],
+    });
+
+    // Persist usage before parsing or project validation can fail.
+    await writeLog({
+      status: 'success',
+      stage: 'استهلاك النموذج · التنفيذ',
+      message: modelResponse.usageSource === 'provider'
+        ? 'أعاد المزوّد بيانات الرموز لهذا الاستدعاء.'
+        : 'لم يوفّر المزوّد بيانات الرموز لهذا الاستدعاء.',
+      input_tokens: modelResponse.inputTokens,
+      output_tokens: modelResponse.outputTokens,
+      total_tokens: modelResponse.totalTokens,
+      usage_source: modelResponse.usageSource,
+      request_id: modelResponse.requestId,
     });
 
     const parsed = parseJsonReply(modelResponse.text);
@@ -318,11 +341,6 @@ export default async function (req) {
       stage: "بناء",
       message: summary,
       version,
-      input_tokens: modelResponse.inputTokens,
-      output_tokens: modelResponse.outputTokens,
-      total_tokens: modelResponse.totalTokens,
-      usage_source: modelResponse.usageSource,
-      request_id: modelResponse.requestId,
     });
 
     return Response.json({
