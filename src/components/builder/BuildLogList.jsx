@@ -2,6 +2,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { ar } from 'date-fns/locale';
 import { CheckCircle2, Terminal, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { summarizeUsageLogs } from '@/lib/usageSummary';
 
 function duration(ms) {
   const n = Number(ms);
@@ -29,6 +30,9 @@ function usageSummary(log) {
 }
 
 export default function BuildLogList({ logs }) {
+  const usageTotals = summarizeUsageLogs(logs);
+  const formatTokens = (value) => value === null ? '—' : value.toLocaleString('en-US');
+
   if (!logs.length) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
@@ -43,6 +47,33 @@ export default function BuildLogList({ logs }) {
 
   return (
     <div className="h-full overflow-y-auto">
+      {usageTotals.calls > 0 && (
+        <section aria-label="استهلاك الذكاء الاصطناعي لهذا المشروع" className="border-b border-border/60 bg-emerald-300/[.035] px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-[10.5px] font-medium text-emerald-100/85">استهلاك هذا المشروع</p>
+            <span className="text-[9px] text-muted-foreground/60">من السجلات المعروضة · حتى 40 سجل</span>
+          </div>
+          <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <div>
+              <span className="block text-[9px] text-muted-foreground/60">استدعاءات مبلّغ عنها</span>
+              <strong className="mt-1 block text-[15px] font-medium tabular-nums text-foreground">{formatTokens(usageTotals.calls)}</strong>
+            </div>
+            <div>
+              <span className="block text-[9px] text-muted-foreground/60">إدخال</span>
+              <strong className="mt-1 block text-[15px] font-medium tabular-nums text-foreground">{formatTokens(usageTotals.inputTokens)}</strong>
+            </div>
+            <div>
+              <span className="block text-[9px] text-muted-foreground/60">إخراج</span>
+              <strong className="mt-1 block text-[15px] font-medium tabular-nums text-foreground">{formatTokens(usageTotals.outputTokens)}</strong>
+            </div>
+            <div>
+              <span className="block text-[9px] text-emerald-100/55">إجمالي معروف</span>
+              <strong className="mt-1 block text-[15px] font-medium tabular-nums text-emerald-100">{formatTokens(usageTotals.totalTokens)}</strong>
+            </div>
+          </div>
+          <p className="mt-2 text-[9px] leading-relaxed text-muted-foreground/50">بيانات المزوّد فقط؛ ليست سعراً أو فاتورة. الحقول غير المتاحة لا تُقدّر.</p>
+        </section>
+      )}
       <div className="divide-y divide-border/50">
         {logs.map((log) => {
           const ok = log.status === 'success';
