@@ -47,6 +47,7 @@ export default function BuildLogList({ logs }) {
         {logs.map((log) => {
           const ok = log.status === 'success';
           const Icon = ok ? CheckCircle2 : XCircle;
+          const usage = usageSummary(log);
           return (
             <div key={log.id} className="flex items-start gap-2.5 px-4 py-2.5">
               <Icon
@@ -80,9 +81,9 @@ export default function BuildLogList({ logs }) {
                   {[log.provider, log.model].filter(Boolean).join(' · ')}
                   {log.prompt ? ` · ${log.prompt}` : ''}
                 </p>
-                {usageSummary(log) && (
+                {usage && (
                   <p className="mt-1 text-[10px] text-emerald-300/80" dir="auto">
-                    {usageSummary(log)}
+                    {usage}
                   </p>
                 )}
                 {log.request_id && (
