@@ -14,7 +14,7 @@ import { base44 } from '@/api/base44Client';
 import { sessionKey } from '@/lib/session';
 import { getActive } from '@/lib/aiKeys';
 import { providerById } from '@/lib/providers';
-import { summarizeUsageLogs } from '@/lib/usageSummary';
+import { groupUsageByProvider, summarizeUsageLogs } from '@/lib/usageSummary';
 
 const SUGGESTIONS = [
   'منصة تجارة إلكترونية فاخرة مع لوحة تحكم متكاملة',
@@ -128,6 +128,7 @@ export default function Dashboard() {
   const active = getActive();
   const provider = providerById(active.provider);
   const usageSummary = summarizeUsageLogs(usageLogs);
+  const usageBreakdown = groupUsageByProvider(usageLogs, 4);
   const formatUsage = (value) => value === null ? '—' : value.toLocaleString('en-US');
 
   return (
@@ -251,24 +252,42 @@ export default function Dashboard() {
                 <Activity size={16} /> ستظهر القياسات بعد أول استدعاء يعيد بيانات الرموز.
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                <div className="rounded-xl border border-white/[.07] bg-black/20 px-3 py-3">
-                  <span className="text-[9px] text-[#9eab9b]/60">استدعاءات موثّقة</span>
-                  <strong className="mt-2 block text-[21px] font-medium tabular-nums text-[#e7eee2]">{formatUsage(usageSummary.calls)}</strong>
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  <div className="rounded-xl border border-white/[.07] bg-black/20 px-3 py-3">
+                    <span className="text-[9px] text-[#9eab9b]/60">استدعاءات موثّقة</span>
+                    <strong className="mt-2 block text-[21px] font-medium tabular-nums text-[#e7eee2]">{formatUsage(usageSummary.calls)}</strong>
+                  </div>
+                  <div className="rounded-xl border border-white/[.07] bg-black/20 px-3 py-3">
+                    <span className="text-[9px] text-[#9eab9b]/60">رموز الإدخال</span>
+                    <strong className="mt-2 block text-[21px] font-medium tabular-nums text-[#e7eee2]">{formatUsage(usageSummary.inputTokens)}</strong>
+                  </div>
+                  <div className="rounded-xl border border-white/[.07] bg-black/20 px-3 py-3">
+                    <span className="text-[9px] text-[#9eab9b]/60">رموز الإخراج</span>
+                    <strong className="mt-2 block text-[21px] font-medium tabular-nums text-[#e7eee2]">{formatUsage(usageSummary.outputTokens)}</strong>
+                  </div>
+                  <div className="rounded-xl border border-emerald-300/15 bg-emerald-300/[.045] px-3 py-3">
+                    <span className="text-[9px] text-emerald-100/55">الإجمالي المبلّغ</span>
+                    <strong className="mt-2 block text-[21px] font-medium tabular-nums text-emerald-100">{formatUsage(usageSummary.totalTokens)}</strong>
+                    <span className="mt-1 block text-[8px] text-emerald-100/40">{formatUsage(usageSummary.totalReportedCalls)} سجل بإجمالي متاح</span>
+                  </div>
                 </div>
-                <div className="rounded-xl border border-white/[.07] bg-black/20 px-3 py-3">
-                  <span className="text-[9px] text-[#9eab9b]/60">رموز الإدخال</span>
-                  <strong className="mt-2 block text-[21px] font-medium tabular-nums text-[#e7eee2]">{formatUsage(usageSummary.inputTokens)}</strong>
-                </div>
-                <div className="rounded-xl border border-white/[.07] bg-black/20 px-3 py-3">
-                  <span className="text-[9px] text-[#9eab9b]/60">رموز الإخراج</span>
-                  <strong className="mt-2 block text-[21px] font-medium tabular-nums text-[#e7eee2]">{formatUsage(usageSummary.outputTokens)}</strong>
-                </div>
-                <div className="rounded-xl border border-emerald-300/15 bg-emerald-300/[.045] px-3 py-3">
-                  <span className="text-[9px] text-emerald-100/55">الإجمالي المبلّغ</span>
-                  <strong className="mt-2 block text-[21px] font-medium tabular-nums text-emerald-100">{formatUsage(usageSummary.totalTokens)}</strong>
-                  <span className="mt-1 block text-[8px] text-emerald-100/40">{formatUsage(usageSummary.totalReportedCalls)} سجل بإجمالي متاح</span>
-                </div>
+                {usageBreakdown.length > 0 && (
+                  <div className="grid gap-1.5 sm:grid-cols-2">
+                    {usageBreakdown.map((item) => (
+                      <div key={item.provider + item.model} className="flex min-w-0 items-center justify-between gap-3 rounded-lg border border-white/[.06] bg-black/15 px-3 py-2">
+                        <div className="min-w-0">
+                          <p className="truncate text-[10px] font-medium text-[#dce6d7]">{item.provider}</p>
+                          <p className="truncate text-[9px] text-[#9eab9b]/55" dir="auto">{item.model} · {formatUsage(item.calls)} استدعاء</p>
+                        </div>
+                        <div className="shrink-0 text-left">
+                          <span className="block text-[9px] text-[#9eab9b]/55">الإجمالي المعروف</span>
+                          <strong className="text-[12px] font-medium tabular-nums text-emerald-100">{formatUsage(item.totalTokens)}</strong>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
