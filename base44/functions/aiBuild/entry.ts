@@ -5,7 +5,7 @@ import {
   PROVIDERS,
   resolveApiKey,
 } from "../../shared/aiProviders.ts";
-import { sanitizeProjectFiles } from "../../shared/projectFiles.ts";
+import { sanitizeProjectFiles, type ProjectFile } from "../../shared/projectFiles.ts";
 import {
   formatAgentPlan,
   formatProjectInspection,
@@ -44,7 +44,29 @@ Rules:
 - Never request API keys, passwords, tokens, or private data.
 - Match the language of the user. Keep the plan specific, testable and short.`;
 
-function filesToContext(files) {
+type ProviderId = keyof typeof PROVIDERS;
+type BuildRequest = {
+  projectId?: unknown;
+  prompt?: unknown;
+  provider?: unknown;
+  model?: unknown;
+  history?: unknown;
+  agentMode?: unknown;
+};
+
+function isProviderId(value: string): value is ProviderId {
+  return Object.prototype.hasOwnProperty.call(PROVIDERS, value);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function errorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
+}
+
+function filesToContext(files: ProjectFile[]): string {
   if (!files || !files.length) return "";
   let budget = 60000;
   const blocks = [];
@@ -59,10 +81,10 @@ function filesToContext(files) {
   return blocks.join("\n\n");
 }
 
-export default async function (req) {
+export default async function (req: Request): Promise<Response> {
   let ctx: any = null;
   try {
-    const body = await req.json().catch(() => ({}));
+    const body = await req.json().catch(() => ({})) as BuildRequest;
     // Credentials are resolved from platform secrets only — never from the request body.
     const { projectId, prompt, provider, model, history, agentMode: requestedAgentMode } = body || {};
 
@@ -75,14 +97,20 @@ export default async function (req) {
     if (prompt.length > 8000) {
       return Response.json({ error: "الوصف طويل جداً" }, { status: 400 });
     }
-    if (!provider || !model) {
+    if (
+      typeof provider !== "string" ||
+      !provider ||
+      typeof model !== "string" ||
+      !model.trim()
+    ) {
       return Response.json({ error: "حدّد المزوّد والموديل أولاً" }, {
         status: 400,
       });
     }
-    if (!PROVIDERS[provider]) {
+    if (!isProviderId(provider)) {
       return Response.json({ error: "مزوّد غير مدعوم" }, { status: 400 });
     }
+    const providerConfig = PROVIDERS[provider];
     const agentMode = normalizeAgentMode(requestedAgentMode);
 
     const base44 = createClientFromRequest(req);
@@ -129,14 +157,14 @@ export default async function (req) {
       await writeLog({
         status: "error",
         stage: "المزوّد",
-        message: `مزوّد ${PROVIDERS[provider].label} غير مربوط: السر ${
-          PROVIDERS[provider].secret
+        message: `مزوّد ${providerConfig.label} غير مربوط: السر ${
+          providerConfig.secret
         } غير مضبوط.`,
       });
       return Response.json(
         {
-          error: `مزوّد ${PROVIDERS[provider].label} غير مربوط بعد. أضِف السر ${
-            PROVIDERS[provider].secret
+          error: `مزوّد ${providerConfig.label} غير مربوط بعد. أضِف السر ${
+            providerConfig.secret
           } من صفحة الأسرار في لوحة التطبيق، ثم أعد المحاولة.`,
           code: "provider_not_connected",
         },
@@ -160,16 +188,18 @@ export default async function (req) {
     const existing = sanitizeProjectFiles(
       Array.isArray(project.files) ? project.files : [],
     );
-    const historyText = Array.isArray(history)
-      ? history
-        .slice(-6)
-        .map((m) =>
-          `${m.role === "assistant" ? "NAWAH" : "USER"}: ${
-            String(m.content || "").slice(0, 600)
-          }`
-        )
-        .join("\n")
-      : "";
+    const historyEntries = Array.isArray(history)
+      ? history.filter(isRecord).slice(-6)
+      : [];
+    const historyText = historyEntries
+      .map((message) => {
+        const role = message.role === "assistant" ? "NAWAH" : "USER";
+        const content = typeof message.content === "string"
+          ? message.content.slice(0, 600)
+          : "";
+        return `${role}: ${content}`;
+      })
+      .join("\n");
 
     // Deep mode is opt-in: it spends one additional provider call to create a
     // bounded execution plan before implementation. Fast mode keeps the existing
@@ -255,7 +285,7 @@ export default async function (req) {
       request_id: modelResponse.requestId,
     });
 
-    const parsed = parseJsonReply(modelResponse.text);
+    const parsed = parseJsonReply(modelResponse.text) as Record<string, unknown>;
     const incoming = sanitizeProjectFiles(parsed.files, { maxFiles: 12 });
     if (!incoming.length) {
       throw new Error(
@@ -292,7 +322,7 @@ export default async function (req) {
       ? parsed.summary.slice(0, 4000)
       : "تم تحديث التطبيق.";
     const notes = Array.isArray(parsed.notes)
-      ? parsed.notes.filter((n) => typeof n === "string").slice(0, 4)
+      ? parsed.notes.filter((note): note is string => typeof note === "string").slice(0, 4)
       : [];
 
     const snapshot = await db.Version.create({
@@ -365,7 +395,7 @@ export default async function (req) {
           session_key: ctx.project.session_key || "",
           status: "error",
           stage: "خطأ في التوليد",
-          message: String(error?.message || "فشل التوليد").slice(0, 1500),
+          message: errorMessage(error, "فشل التوليد").slice(0, 1500),
           prompt: String(ctx.prompt).trim().slice(0, 1500),
           provider: ctx.provider,
           model: ctx.model,
@@ -376,7 +406,7 @@ export default async function (req) {
         // Reporting the original failure matters more than the log row.
       }
     }
-    return Response.json({ error: error?.message || "فشل التوليد" }, {
+    return Response.json({ error: errorMessage(error, "فشل التوليد") }, {
       status: 500,
     });
   }
