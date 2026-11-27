@@ -53,7 +53,13 @@ The current entity models use owner-or-admin access rules. Backend functions use
 
 Provider credentials must remain in server-side platform secrets. Never add credentials, user session tokens, Base44 local-link files, database dumps or production records to Git.
 
-## 6. Known engineering risks
+## 6. AI usage telemetry
+
+Each successful provider response is normalized into input, output and total token counts where the provider supplies them. A usage log is written immediately after the response and before JSON parsing or project validation, so a later generation failure does not silently discard usage for a completed model call.
+
+The log records the provider request reference when available. Missing or malformed usage is marked unavailable; token counts are not estimated, and monetary cost is not fabricated from an unverified price table. Deep mode records planning and implementation calls separately.
+
+## 7. Known engineering risks
 
 ### Concurrent project mutations
 
@@ -65,7 +71,7 @@ This is tracked in [issue #2](https://github.com/abuahmad2003sudan-del/Aman-Forg
 
 The repository currently has a legacy `checkJs` diagnostics baseline. The CI typecheck step is advisory while the baseline is reduced. Build, lint and focused tests remain blocking. See [issue #1](https://github.com/abuahmad2003sudan-del/Aman-Forge2/issues/1).
 
-## 7. Target architecture
+## 8. Target architecture
 
 The intended direction is to separate product capabilities behind stable interfaces:
 
