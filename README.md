@@ -1,62 +1,100 @@
-# Base44 Project
+# AMAN FORGE — AI App Studio
 
-Use this repository to run and edit the app locally, then publish changes back through Base44.
+AMAN FORGE is an AI-assisted application workspace for describing, building, inspecting and editing web projects. The current product combines a React/Vite studio with Base44-backed identity, persistence and server functions.
 
-Any change pushed to the repo will also be reflected in the Base44 Builder.
+> **Repository status:** the source has been imported from the existing Base44 application and is being expanded in GitHub. GitHub is the canonical source for this engineering track. It is not yet a fully independent replacement for Base44.
 
-## Prerequisites
+[![CI](https://github.com/abuahmad2003sudan-del/Aman-Forge2/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/abuahmad2003sudan-del/Aman-Forge2/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/abuahmad2003sudan-del/Aman-Forge2/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/abuahmad2003sudan-del/Aman-Forge2/actions/workflows/codeql.yml)
 
-1. Clone the repository using the project's Git URL.
-2. Navigate to the project directory.
-3. Install dependencies: `npm install`.
-4. Install the Base44 CLI: `npm install -g base44@latest`.
-5. Install [Deno](https://docs.deno.com/runtime/getting_started/installation/) — the local Base44 backend runs on it.
+## Current capabilities
 
-Run `base44 --help` (or see the [CLI reference](https://docs.base44.com/developers/references/cli/commands/introduction)) for the full command surface.
+- React studio dashboard and builder workspace
+- Project file editor, preview, versions and build logs
+- Fast and deep agent modes with bounded planning and project inspection
+- Server-side AI provider configuration; API credentials are resolved from platform secrets
+- File path, extension, size and project-shape validation
+- Isolated HTML preview with a restrictive Content Security Policy and network access denied by default
+- Base44 entities and server functions for authentication, projects, snapshots and provider configuration
 
-## Run Locally
+The current generation contract targets static HTML, CSS and JavaScript. It does not yet provide an isolated Node.js/npm runtime for arbitrary React, Next.js or server-side projects. See [ARCHITECTURE.md](ARCHITECTURE.md).
 
-Three commands, from the project root:
+## Open in Codespaces
 
-```bash
-base44 login   # one-time per machine
-base44 link    # one-time per clone
-base44 dev     # local backend + frontend together
-```
+The repository includes a devcontainer for browser-based development with Node.js 22, Deno 2 and the Base44 CLI.
 
-Open the frontend URL that `base44 dev` prints (typically `http://localhost:5173`).
-
-Notes:
-
-- **Every fresh clone needs `base44 link`.** It writes `base44/.app.jsonc` (the app-id pointer), which is deliberately gitignored. Your app id is in the Builder URL (`app.base44.com/apps/<id>/...`); `base44 link --help` shows the non-interactive flags.
-- **`base44 dev` runs the frontend for you** (via `site.serveCommand` in this repo's `base44/config.jsonc`) — never run `npm run dev` yourself: alone it serves a UI with no backend behind it (`[base44] Proxy not enabled`, every `/api` call fails), and alongside `base44 dev` the second Vite silently takes the next port and you end up looking at the wrong one.
-- **The app must be published at least once for the UI to load under `base44 dev`.** The frontend boots by fetching app settings from the hosted app; before the first publish that fails and every page redirects to login. The local API works regardless.
-- Entities, functions, and auth run locally — entity data is **in-memory only**, wiped when `base44 dev` restarts. Everything else (Core integrations, OAuth login) is forwarded to your deployed app. Full breakdown: [Local development overview](https://docs.base44.com/developers/backend/overview/local-dev/local-development-overview).
-
-## Frontend Only, Hosted Backend
-
-To work on just the frontend against your app's live hosted backend:
+1. Open [Codespaces](https://github.com/abuahmad2003sudan-del/Aman-Forge2/codespaces).
+2. Create a codespace from `work/engineering` or the branch you intend to work on.
+3. Wait for the devcontainer setup to install packages and the Base44 CLI.
+4. Authenticate and link the Base44 app if you need its backend:
 
 ```bash
-base44 dev --remote
+base44 login
+base44 link
+base44 dev
 ```
 
-⚠️ In this mode writes go to your app's **production data** — plain `base44 dev` keeps everything local.
+The local UI is normally served on port 5173. Codespaces forwards this port and can open its browser preview.
 
-## Publish Your Changes
+### Important: local versus remote data
 
-After pushing your changes to git, open the Base44 dashboard and publish the app:
+- `base44 dev` runs the local backend and uses local/in-memory entity data for development.
+- `base44 dev --remote` connects the frontend to the hosted backend. Writes may affect production data. Use it only when that is intentional.
+- The frontend requires a Base44 app association and the existing app to have been published at least once for the full hosted settings/auth bootstrap.
+
+The GitHub repository does not currently auto-sync to the Base44 Builder. Treat GitHub commits and Base44 app changes as separate until a verified integration is established.
+
+## Development commands
 
 ```bash
-base44 dashboard open
+npm install
+npm run dev
+npm run build
+npm run lint
+npm run test:preview
+npm run test:shared
+npm run test
+npm run typecheck
 ```
 
-This repo syncs to Base44 through git, so publish from the dashboard rather than `base44 deploy` — a CLI deploy ships your local tree directly, bypassing the sync, and the deployed state silently diverges from the repo.
+`npm run test:shared` runs the Deno tests for shared backend validation and agent-pipeline logic. Deno is included in the devcontainer and CI workflow.
 
-## Docs & Support
+The legacy JavaScript/JSX `checkJs` typecheck currently reports pre-existing diagnostics and is advisory in CI while the baseline is reduced. Build, lint and focused tests remain required checks. Track progress in [issue #1](https://github.com/abuahmad2003sudan-del/Aman-Forge2/issues/1).
 
-GitHub integration: [https://docs.base44.com/developers/app-code/local-development/github](https://docs.base44.com/developers/app-code/local-development/github)
+## Repository structure
 
-Local development: [https://docs.base44.com/developers/backend/overview/local-dev/local-development-overview](https://docs.base44.com/developers/backend/overview/local-dev/local-development-overview)
+```text
+base44/
+  entities/       Data models and row-level access rules
+  functions/      Server-side request handlers
+  shared/         Shared validation, provider and agent logic
+src/
+  components/     Studio and UI components
+  pages/          Dashboard, builder, auth and settings pages
+  lib/            Preview, auth and app helpers
+.github/
+  workflows/      CI and CodeQL workflows
+.devcontainer/    Codespaces environment
+```
 
-Support: [https://app.base44.com/support](https://app.base44.com/support)
+## Security and engineering
+
+- Never commit `.env`, `.env.*`, API keys, session tokens, private keys, local Base44 link files or production data.
+- Provider credentials belong in server-side platform secrets.
+- Preserve user-scoped access and entity RLS rules.
+- Keep generated code isolated in the preview frame; network access is an explicit opt-in.
+- Do not implement project serialization with a read-then-write lock on a normal entity. The concurrency issue is tracked in [issue #2](https://github.com/abuahmad2003sudan-del/Aman-Forge2/issues/2).
+- Use focused branches and pull requests. See [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md).
+
+## Roadmap direction
+
+1. Eliminate the confirmed concurrency race with an actually atomic coordination primitive.
+2. Stabilize the existing build, lint and test pipeline; reduce legacy typecheck diagnostics.
+3. Separate identity, project persistence, model gateway, runtime and artifact interfaces.
+4. Add isolated build/run environments with resource limits and controlled network egress.
+5. Add durable snapshots, rollback, cancellation and structured execution telemetry.
+6. Reduce platform coupling through tested adapters before migrating production data or authentication.
+
+## License
+
+No open-source license has been added yet. All rights remain with the repository owner unless and until a license is explicitly selected.
